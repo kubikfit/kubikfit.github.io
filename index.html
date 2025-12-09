@@ -1,33 +1,18 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <title>Movie Player</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-    <style>
-        body {
-            margin: 0;
-            background: #000;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-        }
-        video {
-            width: 100%;
-            height: 100%;
-            max-width: 100%;
-            max-height: 100%;
-            background: #000;
-        }
-    </style>
+<meta charset="UTF-8">
+<title>Movie Player</title>
+<style>
+    body { margin:0; background:black; }
+    video { width:100%; height:100%; }
+</style>
 </head>
 <body>
 
-<video controls autoplay playsinline>
-    <source src="movie.mp4" type="video/mp4">
-    Ваш браузер не поддерживает HTML5 видео.
+<video controls autoplay>
+    <source src="http://192.168.0.49:8000/movie.mp4" type="video/mp4">
+    Видео не найдено.
 </video>
 
 </body>
