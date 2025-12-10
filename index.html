@@ -1,19 +1,30 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Matrix FPS Test</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Matrix FPS Test | GPU Performance Benchmark</title>
+    <meta name="description" content="Test your GPU performance with interactive Matrix-style rain. Click to add symbols, hold for rapid increase. Real-time FPS counter.">
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { 
-            background: #000; 
-            color: #00FF00; 
+        /* Reset & Base */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background: #000000;
+            color: #00FF00;
             font-family: 'Courier New', monospace;
             overflow: hidden;
             cursor: pointer;
             height: 100vh;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
         }
         
+        /* Canvas */
         #matrixCanvas {
             display: block;
             position: absolute;
@@ -21,98 +32,319 @@
             left: 0;
             width: 100%;
             height: 100%;
+            z-index: 1;
         }
         
+        /* Info Panel */
         #infoPanel {
             position: absolute;
             top: 20px;
             left: 20px;
             z-index: 100;
-            background: rgba(0, 0, 0, 0.7);
-            padding: 15px;
+            background: rgba(0, 0, 0, 0.85);
+            padding: 20px;
             border: 1px solid #00FF00;
-            border-radius: 5px;
-            box-shadow: 0 0 15px rgba(0, 255, 0, 0.3);
-            min-width: 250px;
+            border-radius: 8px;
+            box-shadow: 0 0 20px rgba(0, 255, 0, 0.4);
+            min-width: 280px;
+            backdrop-filter: blur(5px);
         }
         
         .info-row {
-            margin: 8px 0;
+            margin: 10px 0;
             font-size: 18px;
-            text-shadow: 0 0 5px #00FF00;
+            text-shadow: 0 0 8px #00FF00;
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .info-label {
+            color: #00FF00;
         }
         
         .info-value {
-            float: right;
             color: #FFFFFF;
             font-weight: bold;
+            font-family: 'Courier New', monospace;
         }
         
+        /* Controls */
         #controls {
             position: absolute;
             bottom: 20px;
             left: 20px;
             z-index: 100;
-            background: rgba(0, 0, 0, 0.7);
-            padding: 10px;
+            background: rgba(0, 0, 0, 0.85);
+            padding: 15px;
             border: 1px solid #00FF00;
-            border-radius: 5px;
+            border-radius: 8px;
+            display: flex;
+            gap: 10px;
+            backdrop-filter: blur(5px);
         }
         
-        button {
-            background: #000;
+        .control-btn {
+            background: #000000;
             color: #00FF00;
             border: 1px solid #00FF00;
-            padding: 8px 15px;
-            margin: 5px;
+            padding: 10px 20px;
             cursor: pointer;
-            font-family: 'Courier New';
-            transition: all 0.3s;
+            font-family: 'Courier New', monospace;
+            font-size: 16px;
+            border-radius: 4px;
+            transition: all 0.3s ease;
+            min-width: 120px;
         }
         
-        button:hover {
+        .control-btn:hover {
             background: #00FF00;
-            color: #000;
-            box-shadow: 0 0 10px #00FF00;
+            color: #000000;
+            box-shadow: 0 0 15px #00FF00;
+            transform: translateY(-2px);
         }
         
-        #touchHint {
+        .control-btn:active {
+            transform: translateY(0);
+        }
+        
+        /* Instructions */
+        #instructions {
             position: absolute;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            font-size: 24px;
-            opacity: 0.7;
-            animation: pulse 2s infinite;
+            z-index: 50;
+            text-align: center;
+            background: rgba(0, 0, 0, 0.9);
+            padding: 30px;
+            border: 1px solid #00FF00;
+            border-radius: 10px;
+            max-width: 500px;
+            animation: pulse 3s infinite;
         }
         
+        #instructions h2 {
+            margin-bottom: 20px;
+            font-size: 24px;
+            color: #00FF41;
+        }
+        
+        .instruction-item {
+            margin: 15px 0;
+            font-size: 18px;
+            line-height: 1.5;
+        }
+        
+        .key {
+            display: inline-block;
+            background: #111;
+            border: 1px solid #00FF00;
+            padding: 5px 10px;
+            border-radius: 4px;
+            margin: 0 5px;
+        }
+        
+        /* Performance Warning */
+        #warning {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            z-index: 100;
+            background: rgba(255, 50, 50, 0.9);
+            color: white;
+            padding: 10px 15px;
+            border-radius: 5px;
+            font-size: 14px;
+            display: none;
+            max-width: 300px;
+        }
+        
+        /* Animations */
         @keyframes pulse {
-            0%, 100% { opacity: 0.3; }
-            50% { opacity: 0.8; }
+            0%, 100% { opacity: 0.8; }
+            50% { opacity: 1; }
+        }
+        
+        @keyframes glow {
+            0%, 100% { box-shadow: 0 0 10px #00FF00; }
+            50% { box-shadow: 0 0 25px #00FF00; }
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            #infoPanel {
+                top: 10px;
+                left: 10px;
+                right: 10px;
+                min-width: auto;
+                padding: 15px;
+            }
+            
+            #controls {
+                bottom: 10px;
+                left: 10px;
+                right: 10px;
+                justify-content: center;
+                flex-wrap: wrap;
+            }
+            
+            .control-btn {
+                min-width: 100px;
+                padding: 8px 15px;
+                font-size: 14px;
+            }
+            
+            #instructions {
+                width: 90%;
+                padding: 20px;
+            }
+            
+            .info-row {
+                font-size: 16px;
+            }
+        }
+        
+        @media (max-height: 600px) {
+            #instructions {
+                display: none;
+            }
         }
     </style>
+    <!-- Google Adsense (добавить после получения ID) -->
+    <!-- <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-XXXXXXXXXXXXXXXX" crossorigin="anonymous"></script> -->
 </head>
 <body>
+    <!-- Canvas for Matrix Effect -->
     <canvas id="matrixCanvas"></canvas>
     
+    <!-- Info Panel -->
     <div id="infoPanel">
-        <div class="info-row">MATRIX: <span id="charsCount" class="info-value">0</span></div>
-        <div class="info-row">FPS: <span id="fpsValue" class="info-value">60</span></div>
-        <div class="info-row">SPEED: <span id="speedValue" class="info-value">1.0</span></div>
-        <div class="info-row">MEMORY: <span id="memoryValue" class="info-value">0</span> MB</div>
-        <div class="info-row">TIME: <span id="timeValue" class="info-value">0</span>s</div>
+        <div class="info-row">
+            <span class="info-label">MATRIX:</span>
+            <span id="charsCount" class="info-value">0</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">FPS:</span>
+            <span id="fpsValue" class="info-value">60</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">SPEED:</span>
+            <span id="speedValue" class="info-value">1.0</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">MEMORY:</span>
+            <span id="memoryValue" class="info-value">0</span> MB
+        </div>
+        <div class="info-row">
+            <span class="info-label">TIME:</span>
+            <span id="timeValue" class="info-value">0</span>s
+        </div>
+        <div class="info-row">
+            <span class="info-label">STATUS:</span>
+            <span id="statusValue" class="info-value">READY</span>
+        </div>
     </div>
     
+    <!-- Controls -->
     <div id="controls">
-        <button onclick="resetTest()">СБРОС</button>
-        <button onclick="togglePause()">ПАУЗА</button>
-        <button onclick="changeTheme()">ТЕМА</button>
+        <button class="control-btn" onclick="resetTest()">RESET</button>
+        <button class="control-btn" onclick="togglePause()">PAUSE</button>
+        <button class="control-btn" onclick="changeTheme()">THEME</button>
+        <button class="control-btn" onclick="toggleInstructions()">HELP</button>
     </div>
     
-    <div id="touchHint">TAP to add symbols • HOLD for rapid increase</div>
+    <!-- Instructions -->
+    <div id="instructions">
+        <h2>MATRIX FPS TEST</h2>
+        <div class="instruction-item">
+            <span class="key">CLICK</span> or <span class="key">TAP</span> — add 1 symbol
+        </div>
+        <div class="instruction-item">
+            <span class="key">HOLD</span> — rapid symbol generation
+        </div>
+        <div class="instruction-item">
+            Monitor <span class="info-value">FPS</span> as GPU load increases
+        </div>
+        <div class="instruction-item">
+            Goal: Maintain <span class="info-value">60+ FPS</span> with maximum symbols
+        </div>
+        <div class="instruction-item">
+            <button class="control-btn" onclick="startBenchmark()" style="margin-top: 20px;">
+                START BENCHMARK
+            </button>
+        </div>
+        <div class="instruction-item" style="margin-top: 25px; font-size: 14px; opacity: 0.7;">
+            Click anywhere to begin...
+        </div>
+    </div>
+    
+    <!-- Performance Warning -->
+    <div id="warning">
+        ⚠️ High system load detected. Close other applications for accurate results.
+    </div>
+    
+    <!-- AdSense Placeholder (верхний баннер) -->
+    <div id="adTop" style="position:absolute; top:0; left:0; width:100%; text-align:center; z-index:99; display:none;">
+        <!-- Ads will be loaded here -->
+    </div>
+    
+    <!-- JavaScript -->
+    <script src="js/matrix-fps.js"></script>
     
     <script>
-        // Код JavaScript здесь
+        // Initialize when page loads
+        window.addEventListener('load', function() {
+            // Show instructions for first-time visitors
+            if(!localStorage.getItem('matrixFpsVisited')) {
+                document.getElementById('instructions').style.display = 'block';
+            }
+            
+            // Hide instructions on click
+            document.addEventListener('click', function() {
+                document.getElementById('instructions').style.display = 'none';
+                localStorage.setItem('matrixFpsVisited', 'true');
+            }, { once: true });
+            
+            // Show warning if FPS drops below 10
+            setInterval(() => {
+                const fps = parseInt(document.getElementById('fpsValue').textContent);
+                if(fps < 10 && fps > 0) {
+                    document.getElementById('warning').style.display = 'block';
+                } else {
+                    document.getElementById('warning').style.display = 'none';
+                }
+            }, 2000);
+        });
+        
+        // Additional UI functions
+        function toggleInstructions() {
+            const instructions = document.getElementById('instructions');
+            instructions.style.display = 
+                instructions.style.display === 'block' ? 'none' : 'block';
+        }
+        
+        function startBenchmark() {
+            // Auto-add symbols for 10 seconds
+            for(let i = 0; i < 100; i++) {
+                setTimeout(() => {
+                    if(window.addMultipleChars) {
+                        window.addMultipleChars(10);
+                    }
+                }, i * 100);
+            }
+            document.getElementById('instructions').style.display = 'none';
+        }
+        
+        // System info detection
+        function updateSystemInfo() {
+            const nav = navigator;
+            const info = `GPU: ${nav.gpu || nav.deviceMemory || 'Unknown'} | 
+                         Cores: ${nav.hardwareConcurrency || 'Unknown'} |
+                         Platform: ${nav.platform}`;
+            console.log('System:', info);
+        }
+        
+        updateSystemInfo();
     </script>
 </body>
 </html>
