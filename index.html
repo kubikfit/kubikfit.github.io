@@ -3,10 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Matrix FPS Test | GPU Performance Benchmark</title>
-    <meta name="description" content="Test your GPU performance with interactive Matrix-style rain. Click to add symbols, hold for rapid increase. Real-time FPS counter.">
+    <title>Matrix FPS Test | GPU/CPU Performance</title>
+    <meta name="description" content="Test your GPU (desktop) or CPU (mobile) performance with interactive Matrix-style animation">
     <style>
-        /* Reset & Base */
         * {
             margin: 0;
             padding: 0;
@@ -24,7 +23,6 @@
             -webkit-tap-highlight-color: transparent;
         }
         
-        /* Canvas */
         #matrixCanvas {
             display: block;
             position: absolute;
@@ -35,25 +33,35 @@
             z-index: 1;
         }
         
-        /* Info Panel */
+        #deviceInfo {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 100;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 8px 12px;
+            border: 1px solid #00FF00;
+            border-radius: 5px;
+            font-size: 12px;
+            color: #00FF41;
+        }
+        
         #infoPanel {
             position: absolute;
             top: 20px;
             left: 20px;
             z-index: 100;
-            background: rgba(0, 0, 0, 0.85);
-            padding: 20px;
+            background: rgba(0, 0, 0, 0.9);
+            padding: 15px;
             border: 1px solid #00FF00;
             border-radius: 8px;
-            box-shadow: 0 0 20px rgba(0, 255, 0, 0.4);
-            min-width: 280px;
-            backdrop-filter: blur(5px);
+            min-width: 250px;
+            backdrop-filter: blur(3px);
         }
         
         .info-row {
-            margin: 10px 0;
-            font-size: 18px;
-            text-shadow: 0 0 8px #00FF00;
+            margin: 8px 0;
+            font-size: 16px;
             display: flex;
             justify-content: space-between;
         }
@@ -68,283 +76,323 @@
             font-family: 'Courier New', monospace;
         }
         
-        /* Controls */
         #controls {
             position: absolute;
             bottom: 20px;
-            left: 20px;
+            left: 0;
+            right: 0;
             z-index: 100;
-            background: rgba(0, 0, 0, 0.85);
-            padding: 15px;
-            border: 1px solid #00FF00;
-            border-radius: 8px;
             display: flex;
+            justify-content: center;
             gap: 10px;
-            backdrop-filter: blur(5px);
+            padding: 10px;
         }
         
         .control-btn {
-            background: #000000;
+            background: rgba(0, 0, 0, 0.9);
             color: #00FF00;
             border: 1px solid #00FF00;
-            padding: 10px 20px;
+            padding: 12px 24px;
             cursor: pointer;
             font-family: 'Courier New', monospace;
             font-size: 16px;
-            border-radius: 4px;
-            transition: all 0.3s ease;
-            min-width: 120px;
+            border-radius: 6px;
+            transition: all 0.3s;
+            min-width: 140px;
+            backdrop-filter: blur(3px);
         }
         
         .control-btn:hover {
             background: #00FF00;
             color: #000000;
-            box-shadow: 0 0 15px #00FF00;
             transform: translateY(-2px);
         }
         
-        .control-btn:active {
-            transform: translateY(0);
-        }
-        
-        /* Instructions */
         #instructions {
             position: absolute;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            z-index: 50;
-            text-align: center;
-            background: rgba(0, 0, 0, 0.9);
+            z-index: 200;
+            background: rgba(0, 0, 0, 0.95);
             padding: 30px;
-            border: 1px solid #00FF00;
+            border: 2px solid #00FF00;
             border-radius: 10px;
+            text-align: center;
             max-width: 500px;
-            animation: pulse 3s infinite;
+            width: 90%;
+            box-shadow: 0 0 30px rgba(0, 255, 0, 0.5);
         }
         
-        #instructions h2 {
-            margin-bottom: 20px;
-            font-size: 24px;
+        #instructions h1 {
             color: #00FF41;
+            margin-bottom: 20px;
+            font-size: 28px;
         }
         
-        .instruction-item {
+        .instruction-text {
             margin: 15px 0;
             font-size: 18px;
             line-height: 1.5;
         }
         
-        .key {
-            display: inline-block;
-            background: #111;
-            border: 1px solid #00FF00;
-            padding: 5px 10px;
-            border-radius: 4px;
-            margin: 0 5px;
+        .highlight {
+            color: #FFFFFF;
+            font-weight: bold;
         }
         
-        /* Performance Warning */
-        #warning {
-            position: absolute;
-            bottom: 20px;
-            right: 20px;
-            z-index: 100;
-            background: rgba(255, 50, 50, 0.9);
-            color: white;
-            padding: 10px 15px;
-            border-radius: 5px;
-            font-size: 14px;
+        #mobileMode {
             display: none;
-            max-width: 300px;
+            background: rgba(255, 100, 0, 0.2);
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 15px;
         }
         
-        /* Animations */
-        @keyframes pulse {
-            0%, 100% { opacity: 0.8; }
-            50% { opacity: 1; }
+        .mode-indicator {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            margin-left: 10px;
         }
         
-        @keyframes glow {
-            0%, 100% { box-shadow: 0 0 10px #00FF00; }
-            50% { box-shadow: 0 0 25px #00FF00; }
+        .gpu-mode {
+            background: rgba(0, 255, 0, 0.2);
+            color: #00FF00;
         }
         
-        /* Responsive */
+        .cpu-mode {
+            background: rgba(0, 150, 255, 0.2);
+            color: #0096FF;
+        }
+        
         @media (max-width: 768px) {
             #infoPanel {
                 top: 10px;
                 left: 10px;
                 right: 10px;
                 min-width: auto;
-                padding: 15px;
-            }
-            
-            #controls {
-                bottom: 10px;
-                left: 10px;
-                right: 10px;
-                justify-content: center;
-                flex-wrap: wrap;
-            }
-            
-            .control-btn {
-                min-width: 100px;
-                padding: 8px 15px;
-                font-size: 14px;
-            }
-            
-            #instructions {
-                width: 90%;
-                padding: 20px;
+                padding: 12px;
             }
             
             .info-row {
+                font-size: 14px;
+            }
+            
+            #controls {
+                flex-direction: column;
+                align-items: center;
+                bottom: 10px;
+            }
+            
+            .control-btn {
+                width: 90%;
+                max-width: 300px;
+                padding: 15px;
+                font-size: 18px;
+            }
+            
+            #instructions {
+                padding: 20px;
+            }
+            
+            #instructions h1 {
+                font-size: 24px;
+            }
+            
+            .instruction-text {
                 font-size: 16px;
             }
         }
         
-        @media (max-height: 600px) {
-            #instructions {
-                display: none;
+        @media (max-width: 480px) {
+            .control-btn {
+                font-size: 16px;
+                padding: 12px;
+            }
+            
+            #infoPanel {
+                padding: 10px;
             }
         }
     </style>
-    <!-- Google Adsense (добавить после получения ID) -->
-    <!-- <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-XXXXXXXXXXXXXXXX" crossorigin="anonymous"></script> -->
 </head>
 <body>
-    <!-- Canvas for Matrix Effect -->
     <canvas id="matrixCanvas"></canvas>
     
-    <!-- Info Panel -->
+    <div id="deviceInfo">
+        Device: <span id="deviceType">Detecting...</span>
+        <span id="modeBadge" class="mode-indicator gpu-mode">GPU</span>
+    </div>
+    
     <div id="infoPanel">
         <div class="info-row">
-            <span class="info-label">MATRIX:</span>
+            <span class="info-label">SYMBOLS:</span>
             <span id="charsCount" class="info-value">0</span>
         </div>
         <div class="info-row">
             <span class="info-label">FPS:</span>
-            <span id="fpsValue" class="info-value">60</span>
+            <span id="fpsValue" class="info-value">--</span>
         </div>
         <div class="info-row">
-            <span class="info-label">SPEED:</span>
-            <span id="speedValue" class="info-value">1.0</span>
-        </div>
-        <div class="info-row">
-            <span class="info-label">MEMORY:</span>
-            <span id="memoryValue" class="info-value">0</span> MB
+            <span class="info-label">MODE:</span>
+            <span id="testMode" class="info-value">GPU Stress</span>
         </div>
         <div class="info-row">
             <span class="info-label">TIME:</span>
-            <span id="timeValue" class="info-value">0</span>s
+            <span id="timeValue" class="info-value">0s</span>
         </div>
         <div class="info-row">
             <span class="info-label">STATUS:</span>
-            <span id="statusValue" class="info-value">READY</span>
+            <span id="statusValue" class="info-value">Ready</span>
         </div>
     </div>
     
-    <!-- Controls -->
     <div id="controls">
-        <button class="control-btn" onclick="resetTest()">RESET</button>
+        <button class="control-btn" onclick="resetTest()">RESET TEST</button>
         <button class="control-btn" onclick="togglePause()">PAUSE</button>
-        <button class="control-btn" onclick="changeTheme()">THEME</button>
-        <button class="control-btn" onclick="toggleInstructions()">HELP</button>
+        <button class="control-btn" onclick="changeTheme()">CHANGE THEME</button>
     </div>
     
-    <!-- Instructions -->
     <div id="instructions">
-        <h2>MATRIX FPS TEST</h2>
-        <div class="instruction-item">
-            <span class="key">CLICK</span> or <span class="key">TAP</span> — add 1 symbol
+        <h1>MATRIX PERFORMANCE TEST</h1>
+        
+        <div class="instruction-text">
+            Test your <span class="highlight" id="deviceHighlight">GPU</span> performance<br>
+            in real-time with Matrix-style animation
         </div>
-        <div class="instruction-item">
-            <span class="key">HOLD</span> — rapid symbol generation
+        
+        <div class="instruction-text">
+            <span class="highlight">DESKTOP (GPU Test):</span><br>
+            • CLICK = Add symbols<br>
+            • HOLD = Rapid addition<br>
+            • Monitor FPS drop
         </div>
-        <div class="instruction-item">
-            Monitor <span class="info-value">FPS</span> as GPU load increases
+        
+        <div class="instruction-text">
+            <span class="highlight">MOBILE (CPU Test):</span><br>
+            • Optimized for mobile CPUs<br>
+            • Lower symbol count<br>
+            • Battery-friendly
         </div>
-        <div class="instruction-item">
-            Goal: Maintain <span class="info-value">60+ FPS</span> with maximum symbols
+        
+        <div id="mobileMode" class="instruction-text">
+            Mobile mode activated:<br>
+            Tap screen to add computing tasks
         </div>
-        <div class="instruction-item">
-            <button class="control-btn" onclick="startBenchmark()" style="margin-top: 20px;">
-                START BENCHMARK
-            </button>
-        </div>
-        <div class="instruction-item" style="margin-top: 25px; font-size: 14px; opacity: 0.7;">
-            Click anywhere to begin...
+        
+        <button class="control-btn" onclick="startBenchmark()" style="margin-top: 25px; padding: 15px 40px;">
+            START PERFORMANCE TEST
+        </button>
+        
+        <div class="instruction-text" style="margin-top: 20px; font-size: 14px; opacity: 0.7;">
+            Click anywhere to begin testing...
         </div>
     </div>
     
-    <!-- Performance Warning -->
-    <div id="warning">
-        ⚠️ High system load detected. Close other applications for accurate results.
-    </div>
-    
-    <!-- AdSense Placeholder (верхний баннер) -->
-    <div id="adTop" style="position:absolute; top:0; left:0; width:100%; text-align:center; z-index:99; display:none;">
-        <!-- Ads will be loaded here -->
-    </div>
-    
-    <!-- JavaScript -->
     <script src="js/matrix-fps.js"></script>
     
     <script>
-        // Initialize when page loads
+        // Определяем тип устройства
+        function detectDevice() {
+            const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+            const isTablet = /iPad|Android(?!.*Mobile)|Tablet/i.test(navigator.userAgent);
+            
+            if (isMobile && !isTablet) {
+                return 'mobile';
+            } else if (isTablet) {
+                return 'tablet';
+            } else {
+                return 'desktop';
+            }
+        }
+        
+        // Обновляем интерфейс в зависимости от устройства
+        function updateDeviceUI(deviceType) {
+            const deviceTypeElem = document.getElementById('deviceType');
+            const deviceHighlight = document.getElementById('deviceHighlight');
+            const testModeElem = document.getElementById('testMode');
+            const mobileModeDiv = document.getElementById('mobileMode');
+            const modeBadge = document.getElementById('modeBadge');
+            
+            if (deviceType === 'mobile') {
+                deviceTypeElem.textContent = 'Mobile';
+                deviceHighlight.textContent = 'CPU';
+                testModeElem.textContent = 'CPU Stress';
+                mobileModeDiv.style.display = 'block';
+                modeBadge.textContent = 'CPU';
+                modeBadge.className = 'mode-indicator cpu-mode';
+                document.title = 'Matrix CPU Test | Mobile Performance';
+            } else {
+                deviceTypeElem.textContent = 'Desktop';
+                deviceHighlight.textContent = 'GPU';
+                testModeElem.textContent = 'GPU Stress';
+                mobileModeDiv.style.display = 'none';
+                modeBadge.textContent = 'GPU';
+                modeBadge.className = 'mode-indicator gpu-mode';
+                document.title = 'Matrix GPU Test | Graphics Performance';
+            }
+        }
+        
+        // Старт теста (просто скрываем инструкции)
+        function startBenchmark() {
+            document.getElementById('instructions').style.display = 'none';
+            localStorage.setItem('matrixTestVisited', 'true');
+            
+            // Добавляем первый символ для демонстрации
+            setTimeout(() => {
+                if (window.addMatrixChar) {
+                    window.addMatrixChar();
+                }
+            }, 500);
+        }
+        
+        // Показываем/скрываем инструкции
+        function toggleInstructions() {
+            const inst = document.getElementById('instructions');
+            inst.style.display = inst.style.display === 'none' ? 'block' : 'none';
+        }
+        
+        // При загрузке страницы
         window.addEventListener('load', function() {
-            // Show instructions for first-time visitors
-            if(!localStorage.getItem('matrixFpsVisited')) {
-                document.getElementById('instructions').style.display = 'block';
+            // Определяем устройство
+            const deviceType = detectDevice();
+            updateDeviceUI(deviceType);
+            
+            // Передаём информацию в основной скрипт
+            if (window.setDeviceType) {
+                window.setDeviceType(deviceType);
             }
             
-            // Hide instructions on click
-            document.addEventListener('click', function() {
+            // Показываем инструкции для новых пользователей
+            if(!localStorage.getItem('matrixTestVisited')) {
+                document.getElementById('instructions').style.display = 'block';
+            } else {
                 document.getElementById('instructions').style.display = 'none';
-                localStorage.setItem('matrixFpsVisited', 'true');
-            }, { once: true });
+            }
             
-            // Show warning if FPS drops below 10
-            setInterval(() => {
-                const fps = parseInt(document.getElementById('fpsValue').textContent);
-                if(fps < 10 && fps > 0) {
-                    document.getElementById('warning').style.display = 'block';
-                } else {
-                    document.getElementById('warning').style.display = 'none';
+            // Скрываем инструкции при клике вне инструкций
+            document.addEventListener('click', function(e) {
+                const instructions = document.getElementById('instructions');
+                if (instructions.style.display === 'block' && 
+                    !instructions.contains(e.target) && 
+                    e.target.className !== 'control-btn') {
+                    instructions.style.display = 'none';
+                    localStorage.setItem('matrixTestVisited', 'true');
                 }
-            }, 2000);
+            });
         });
         
-        // Additional UI functions
-        function toggleInstructions() {
-            const instructions = document.getElementById('instructions');
-            instructions.style.display = 
-                instructions.style.display === 'block' ? 'none' : 'block';
-        }
-        
-        function startBenchmark() {
-            // Auto-add symbols for 10 seconds
-            for(let i = 0; i < 100; i++) {
-                setTimeout(() => {
-                    if(window.addMultipleChars) {
-                        window.addMultipleChars(10);
-                    }
-                }, i * 100);
-            }
-            document.getElementById('instructions').style.display = 'none';
-        }
-        
-        // System info detection
-        function updateSystemInfo() {
-            const nav = navigator;
-            const info = `GPU: ${nav.gpu || nav.deviceMemory || 'Unknown'} | 
-                         Cores: ${nav.hardwareConcurrency || 'Unknown'} |
-                         Platform: ${nav.platform}`;
-            console.log('System:', info);
-        }
-        
-        updateSystemInfo();
+        // Добавляем кнопку HELP в controls если её нет
+        document.addEventListener('DOMContentLoaded', function() {
+            const controls = document.getElementById('controls');
+            const helpBtn = document.createElement('button');
+            helpBtn.className = 'control-btn';
+            helpBtn.textContent = 'HELP';
+            helpBtn.onclick = toggleInstructions;
+            controls.appendChild(helpBtn);
+        });
     </script>
 </body>
 </html>
