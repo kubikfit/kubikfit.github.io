@@ -1,4 +1,4 @@
-// MATRIX FPS TEST - CMatrix Style
+// MATRIX FPS TEST - Clean Version
 // Save as: js/matrix-fps.js
 
 // ===== CONFIGURATION =====
@@ -7,23 +7,22 @@ const CONFIG = {
     chars: "ﾊﾐﾋｰｳｼﾅﾓﾆｻﾜﾂｵﾘｱﾎﾃﾏｹﾒｴｶｷﾑﾕﾗｾﾈｽﾀﾇﾍ012345789Z:.\"=*+-<>¦｜╌ç",
     
     desktop: {
-        maxChars: 4000,
         fontSize: 16,
-        spawnRate: 15,
-        tailLength: 1, // МИНИМАЛЬНЫЙ шлейф
-        speedMultiplier: 1.2
+        spawnRate: 25,
+        speedMultiplier: 1.2,
+        autoCleanup: true
     },
     
     mobile: {
-        maxChars: 800,
         fontSize: 14,
-        spawnRate: 5,
-        tailLength: 0, // БЕЗ шлейфа на мобилках
-        speedMultiplier: 0.9
+        spawnRate: 15,
+        speedMultiplier: 0.9,
+        autoCleanup: true
     },
     
     colors: ['#0F0', '#0F6', '#0C0', '#3F3'],
-    gravity: 0.03
+    gravity: 0.03,
+    performanceMode: true
 };
 
 // ===== GLOBAL VARIABLES =====
@@ -39,7 +38,7 @@ let deviceType = 'desktop';
 let currentConfig = CONFIG.desktop;
 let currentThemeIndex = 0;
 
-// ===== ТЕМЫ (ИСПРАВЛЕНО) =====
+// ===== ТЕМЫ =====
 const THEMES = [
     { bg: '#000000', color: '#0F0', name: 'MATRIX' },
     { bg: '#0a0a2a', color: '#00ffff', name: 'CYBER' },
@@ -58,7 +57,7 @@ function setDeviceType(type) {
         deviceType === 'mobile' ? 'CPU' : 'GPU';
 }
 
-// ===== КЛАСС СИМВОЛА КАК В CMATRIX =====
+// ===== КЛАСС СИМВОЛА (БЕЗ ШЛЕЙФА, ПРЯМОЕ ПАДЕНИЕ) =====
 class MatrixChar {
     constructor(x, y) {
         this.x = x || Math.random() * canvas.width;
@@ -67,35 +66,26 @@ class MatrixChar {
         this.speed = (0.8 + Math.random() * 0.4) * currentConfig.speedMultiplier;
         this.color = CONFIG.colors[Math.floor(Math.random() * CONFIG.colors.length)];
         this.size = currentConfig.fontSize;
-        this.lifetime = 5000 + Math.random() * 5000;
+        this.lifetime = 8000 + Math.random() * 7000;
         this.createdTime = Date.now();
-        this.brightness = 0.7 + Math.random() * 0.3;
+        this.brightness = 0.8 + Math.random() * 0.2;
         
-        // Минимальный хвост (0 или 1 позиция)
-        this.tail = [];
-        this.tailMax = currentConfig.tailLength;
+        // БЕЗ ШЛЕЙФА ВООБЩЕ
+        this.tail = null;
+        this.tailMax = 0;
     }
     
     update() {
-        // Удаляем старые символы
-        if (Date.now() - this.createdTime > this.lifetime) {
+        // Автоочистка
+        if (currentConfig.autoCleanup && Date.now() - this.createdTime > this.lifetime) {
             return false;
         }
         
-        // Добавляем в хвост (если разрешено)
-        if (this.tailMax > 0) {
-            this.tail.unshift({x: this.x, y: this.y});
-            if (this.tail.length > this.tailMax) {
-                this.tail.pop();
-            }
-        }
-        
-        // Движение
+        // ПРЯМОЕ ПАДЕНИЕ ВНИЗ - никаких волн
         this.y += this.speed;
-        this.x += Math.sin(this.y * 0.01) * 0.2;
         
         // Выход за границы
-        if (this.y > canvas.height + 30) {
+        if (this.y > canvas.height + 100) {
             return false;
         }
         
@@ -103,20 +93,7 @@ class MatrixChar {
     }
     
     draw() {
-        // Рисуем хвост (если есть)
-        for (let i = 0; i < this.tail.length; i++) {
-            const pos = this.tail[i];
-            const opacity = 0.3 * (1 - i / this.tail.length);
-            
-            ctx.save();
-            ctx.globalAlpha = opacity * this.brightness;
-            ctx.fillStyle = this.color;
-            ctx.font = `${this.size * 0.8}px 'Courier New'`;
-            ctx.fillText(this.char, pos.x, pos.y);
-            ctx.restore();
-        }
-        
-        // Рисуем основной символ
+        // ТОЛЬКО ОДИН СИМВОЛ - без шлейфа
         ctx.save();
         ctx.globalAlpha = this.brightness;
         ctx.fillStyle = this.color;
@@ -137,6 +114,8 @@ function initMatrix() {
     setupEventListeners();
     applyTheme(THEMES[currentThemeIndex]);
     requestAnimationFrame(animate);
+    
+    console.log('Matrix Test - CLEAN MODE (no trails)');
 }
 
 function resizeCanvas() {
@@ -151,7 +130,10 @@ function setupEventListeners() {
     });
     
     // Удержание
-    canvas.addEventListener('mousedown', startRapidAddition);
+    canvas.addEventListener('mousedown', () => {
+        if (!isPaused) startRapidAddition();
+    });
+    
     canvas.addEventListener('mouseup', stopRapidAddition);
     canvas.addEventListener('mouseleave', stopRapidAddition);
     
@@ -174,7 +156,8 @@ function setupEventListeners() {
         switch(e.code) {
             case 'Space': togglePause(); break;
             case 'KeyR': resetTest(); break;
-            case 'KeyA': addMultipleChars(5); break;
+            case 'KeyA': addMultipleChars(50); break;
+            case 'KeyQ': addMultipleChars(200); break;
             case 'Escape': stopRapidAddition(); break;
         }
     });
@@ -182,7 +165,7 @@ function setupEventListeners() {
 
 // ===== УПРАВЛЕНИЕ СИМВОЛАМИ =====
 function addMatrixChar(event = null) {
-    if (matrixChars.length >= currentConfig.maxChars || isPaused) return;
+    if (isPaused) return;
     
     let x, y;
     if (event) {
@@ -198,17 +181,30 @@ function addMatrixChar(event = null) {
 }
 
 function addMultipleChars(count) {
-    for (let i = 0; i < count; i++) {
-        if (matrixChars.length >= currentConfig.maxChars) break;
-        addMatrixChar();
+    if (isPaused) return;
+    
+    const batchSize = 100;
+    const batches = Math.ceil(count / batchSize);
+    
+    for (let b = 0; b < batches; b++) {
+        setTimeout(() => {
+            const charsToAdd = Math.min(batchSize, count - (b * batchSize));
+            for (let i = 0; i < charsToAdd; i++) {
+                addMatrixChar();
+            }
+        }, b * 10);
     }
 }
 
 function startRapidAddition() {
     if (holdInterval || isPaused) return;
+    
+    const addSpeed = deviceType === 'mobile' ? 80 : 150;
+    
     holdInterval = setInterval(() => {
-        addMultipleChars(currentConfig.spawnRate);
-    }, deviceType === 'mobile' ? 120 : 60);
+        const batch = deviceType === 'mobile' ? 8 : 15;
+        addMultipleChars(batch);
+    }, 1000 / addSpeed);
 }
 
 function stopRapidAddition() {
@@ -218,17 +214,23 @@ function stopRapidAddition() {
     }
 }
 
+// ===== ОПТИМИЗАЦИЯ ПАМЯТИ =====
+function optimizeMemory() {
+    if (matrixChars.length > 10000) {
+        const removeCount = Math.floor(matrixChars.length * 0.1);
+        matrixChars = matrixChars.slice(removeCount);
+        console.log(`Memory optimized: removed ${removeCount} old symbols`);
+    }
+}
+
 // ===== УПРАВЛЕНИЕ ТЕСТОМ =====
 function resetTest() {
     matrixChars = [];
     testStartTime = Date.now();
     updateInfoPanel();
     
-    // Добавить пару символов для демо
     setTimeout(() => {
-        for (let i = 0; i < 2; i++) {
-            setTimeout(() => addMatrixChar(), i * 200);
-        }
+        addMultipleChars(5);
     }, 300);
 }
 
@@ -238,18 +240,16 @@ function togglePause() {
     btn.textContent = isPaused ? 'RESUME' : 'PAUSE';
 }
 
-// ===== СМЕНА ТЕМЫ (ИСПРАВЛЕНО) =====
+// ===== СМЕНА ТЕМЫ =====
 function changeTheme() {
     currentThemeIndex = (currentThemeIndex + 1) % THEMES.length;
     applyTheme(THEMES[currentThemeIndex]);
 }
 
 function applyTheme(theme) {
-    // Применяем тему к странице
     document.body.style.backgroundColor = theme.bg;
     document.body.style.color = theme.color;
     
-    // Применяем к элементам интерфейса
     const elements = ['#infoPanel', '#deviceBadge', '#controls', '#instructions'];
     elements.forEach(selector => {
         const el = document.querySelector(selector);
@@ -261,14 +261,12 @@ function applyTheme(theme) {
         }
     });
     
-    // Применяем к кнопкам
     document.querySelectorAll('.control-btn').forEach(btn => {
         btn.style.borderColor = theme.color;
         btn.style.color = theme.color;
         btn.style.background = theme.bg.replace(')', ', 0.8)').replace('rgb', 'rgba');
     });
     
-    // Обновляем цвета символов
     const hue = getHueFromColor(theme.color);
     CONFIG.colors = [
         theme.color,
@@ -277,7 +275,6 @@ function applyTheme(theme) {
         adjustColor(theme.color, 90)
     ];
     
-    // Обновляем название режима
     document.getElementById('testMode').textContent = theme.name;
 }
 
@@ -322,8 +319,12 @@ function adjustColor(color, amount) {
 
 // ===== ОБНОВЛЕНИЕ ИНФО ПАНЕЛИ =====
 function updateInfoPanel() {
-    document.getElementById('charsCount').textContent = matrixChars.length;
+    document.getElementById('charsCount').textContent = matrixChars.length.toLocaleString();
     document.getElementById('fpsValue').textContent = Math.round(fps);
+    
+    if (matrixChars.length > 5000) {
+        document.getElementById('testMode').textContent = 'HEAVY';
+    }
 }
 
 // ===== ГЛАВНЫЙ ЦИКЛ =====
@@ -338,22 +339,29 @@ function animate(currentTime) {
         fpsUpdateTime = currentTime;
         frameCount = 0;
         updateInfoPanel();
+        
+        if (matrixChars.length > 8000) {
+            optimizeMemory();
+        }
     }
     
     if (!isPaused) {
-        // Очистка с лёгким затемнением
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+        // Очистка
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.08)';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         
         // Обновление символов
         const newChars = [];
-        for (let i = 0; i < matrixChars.length; i++) {
+        const length = matrixChars.length;
+        
+        for (let i = 0; i < length; i++) {
             const char = matrixChars[i];
             if (char.update()) {
                 char.draw();
                 newChars.push(char);
             }
         }
+        
         matrixChars = newChars;
     }
     
@@ -372,9 +380,7 @@ window.startTest = function() {
     localStorage.setItem('matrixTestVisited', 'true');
     
     setTimeout(() => {
-        for (let i = 0; i < 2; i++) {
-            setTimeout(() => addMatrixChar(), i * 200);
-        }
+        addMultipleChars(3);
     }, 300);
 };
 
