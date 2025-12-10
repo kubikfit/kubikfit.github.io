@@ -1,37 +1,35 @@
-// MATRIX FPS TEST - Optimized Version
+// MATRIX FPS TEST - CMatrix Style
 // Save as: js/matrix-fps.js
 
 // ===== CONFIGURATION =====
 const CONFIG = {
-    // Разные настройки для разных устройств
+    // Символы как в cmatrix
+    chars: "ﾊﾐﾋｰｳｼﾅﾓﾆｻﾜﾂｵﾘｱﾎﾃﾏｹﾒｴｶｷﾑﾕﾗｾﾈｽﾀﾇﾍ012345789Z:.\"=*+-<>¦｜╌ç",
+    
     desktop: {
-        chars: "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789$+-*/=%\"'#&_(),.;:?!\\|{}<>[]^~",
-        maxChars: 5000,
-        fontSize: 18,
-        spawnRate: 20,
-        tailLength: 3, // Уменьшенный шлейф
-        speedMultiplier: 1.5
-    },
-    mobile: {
-        chars: "01",
-        maxChars: 1000,
-        fontSize: 14,
-        spawnRate: 5,
-        tailLength: 1, // Минимальный шлейф для мобилок
-        speedMultiplier: 0.8
+        maxChars: 4000,
+        fontSize: 16,
+        spawnRate: 15,
+        tailLength: 1, // МИНИМАЛЬНЫЙ шлейф
+        speedMultiplier: 1.2
     },
     
-    // Общие настройки
-    colors: ['#00FF00', '#00FF41', '#39FF14', '#32CD32'],
-    gravity: 0.05,
-    glowIntensity: 8
+    mobile: {
+        maxChars: 800,
+        fontSize: 14,
+        spawnRate: 5,
+        tailLength: 0, // БЕЗ шлейфа на мобилках
+        speedMultiplier: 0.9
+    },
+    
+    colors: ['#0F0', '#0F6', '#0C0', '#3F3'],
+    gravity: 0.03
 };
 
 // ===== GLOBAL VARIABLES =====
 let canvas, ctx;
 let matrixChars = [];
 let fps = 0;
-let lastTime = 0;
 let frameCount = 0;
 let fpsUpdateTime = 0;
 let isPaused = false;
@@ -39,58 +37,65 @@ let holdInterval = null;
 let testStartTime = Date.now();
 let deviceType = 'desktop';
 let currentConfig = CONFIG.desktop;
-let renderMode = 'gpu'; // 'gpu' или 'cpu'
+let currentThemeIndex = 0;
 
-// ===== DEVICE DETECTION =====
+// ===== ТЕМЫ (ИСПРАВЛЕНО) =====
+const THEMES = [
+    { bg: '#000000', color: '#0F0', name: 'MATRIX' },
+    { bg: '#0a0a2a', color: '#00ffff', name: 'CYBER' },
+    { bg: '#1a001a', color: '#ff00ff', name: 'NEON' },
+    { bg: '#002a00', color: '#00ff00', name: 'GREEN' },
+    { bg: '#2a0000', color: '#ff4444', name: 'RED' },
+    { bg: '#00002a', color: '#4444ff', name: 'BLUE' }
+];
+
+// ===== УСТАНОВКА УСТРОЙСТВА =====
 function setDeviceType(type) {
     deviceType = type;
     currentConfig = type === 'mobile' ? CONFIG.mobile : CONFIG.desktop;
-    renderMode = type === 'mobile' ? 'cpu' : 'gpu';
     
-    console.log(`Device: ${deviceType}, Mode: ${renderMode}, Max chars: ${currentConfig.maxChars}`);
-    
-    // Обновляем заголовок
     document.getElementById('testMode').textContent = 
-        renderMode === 'gpu' ? 'GPU Stress' : 'CPU Stress';
+        deviceType === 'mobile' ? 'CPU' : 'GPU';
 }
 
-// ===== MATRIX CHARACTER CLASS (ОПТИМИЗИРОВАННЫЙ) =====
+// ===== КЛАСС СИМВОЛА КАК В CMATRIX =====
 class MatrixChar {
     constructor(x, y) {
         this.x = x || Math.random() * canvas.width;
-        this.y = y || -30;
-        this.char = currentConfig.chars[Math.floor(Math.random() * currentConfig.chars.length)];
-        this.speed = (1 + Math.random() * 0.5) * currentConfig.speedMultiplier;
+        this.y = y || -20;
+        this.char = CONFIG.chars[Math.floor(Math.random() * CONFIG.chars.length)];
+        this.speed = (0.8 + Math.random() * 0.4) * currentConfig.speedMultiplier;
         this.color = CONFIG.colors[Math.floor(Math.random() * CONFIG.colors.length)];
-        this.size = currentConfig.fontSize + Math.random() * 4;
+        this.size = currentConfig.fontSize;
+        this.lifetime = 5000 + Math.random() * 5000;
+        this.createdTime = Date.now();
+        this.brightness = 0.7 + Math.random() * 0.3;
+        
+        // Минимальный хвост (0 или 1 позиция)
         this.tail = [];
         this.tailMax = currentConfig.tailLength;
-        this.createdTime = Date.now();
-        this.lifetime = 8000 + Math.random() * 7000; // Время жизни символа
     }
     
     update() {
-        // Убираем старые символы
+        // Удаляем старые символы
         if (Date.now() - this.createdTime > this.lifetime) {
             return false;
         }
         
-        // Добавляем позицию в хвост (упрощённый вариант)
-        this.tail.unshift({x: this.x, y: this.y});
-        if (this.tail.length > this.tailMax) {
-            this.tail.pop();
+        // Добавляем в хвост (если разрешено)
+        if (this.tailMax > 0) {
+            this.tail.unshift({x: this.x, y: this.y});
+            if (this.tail.length > this.tailMax) {
+                this.tail.pop();
+            }
         }
         
         // Движение
         this.y += this.speed;
-        
-        // Немного горизонтального движения для GPU теста
-        if (renderMode === 'gpu') {
-            this.x += Math.sin(this.y * 0.01) * 0.3;
-        }
+        this.x += Math.sin(this.y * 0.01) * 0.2;
         
         // Выход за границы
-        if (this.y > canvas.height + 50 || this.x < -50 || this.x > canvas.width + 50) {
+        if (this.y > canvas.height + 30) {
             return false;
         }
         
@@ -98,30 +103,24 @@ class MatrixChar {
     }
     
     draw() {
-        // Рисуем хвост (упрощённо)
+        // Рисуем хвост (если есть)
         for (let i = 0; i < this.tail.length; i++) {
             const pos = this.tail[i];
             const opacity = 0.3 * (1 - i / this.tail.length);
             
             ctx.save();
-            ctx.globalAlpha = opacity;
+            ctx.globalAlpha = opacity * this.brightness;
             ctx.fillStyle = this.color;
-            ctx.font = `${this.size * 0.7}px 'Courier New'`;
+            ctx.font = `${this.size * 0.8}px 'Courier New'`;
             ctx.fillText(this.char, pos.x, pos.y);
             ctx.restore();
         }
         
         // Рисуем основной символ
         ctx.save();
+        ctx.globalAlpha = this.brightness;
         ctx.fillStyle = this.color;
         ctx.font = `bold ${this.size}px 'Courier New'`;
-        
-        if (renderMode === 'gpu') {
-            // GPU-интенсивные эффекты только для десктопов
-            ctx.shadowColor = this.color;
-            ctx.shadowBlur = CONFIG.glowIntensity;
-        }
-        
         ctx.fillText(this.char, this.x, this.y);
         ctx.restore();
     }
@@ -130,21 +129,14 @@ class MatrixChar {
 // ===== ИНИЦИАЛИЗАЦИЯ =====
 function initMatrix() {
     canvas = document.getElementById('matrixCanvas');
-    ctx = canvas.getContext('2d', { alpha: false }); // Отключаем альфа-канал для производительности
-    
-    // Определяем устройство если ещё не определили
-    if (!deviceType) {
-        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-        setDeviceType(isMobile ? 'mobile' : 'desktop');
-    }
+    ctx = canvas.getContext('2d', { alpha: false });
     
     resizeCanvas();
     window.addEventListener('resize', resizeCanvas);
     
     setupEventListeners();
+    applyTheme(THEMES[currentThemeIndex]);
     requestAnimationFrame(animate);
-    
-    console.log('Matrix Test initialized in', renderMode, 'mode');
 }
 
 function resizeCanvas() {
@@ -153,46 +145,37 @@ function resizeCanvas() {
 }
 
 function setupEventListeners() {
-    // Клик для добавления символов
+    // Клик
     canvas.addEventListener('click', (e) => {
-        if (isPaused) return;
-        addMatrixChar(e);
+        if (!isPaused) addMatrixChar(e);
     });
     
-    // Удержание для быстрого добавления
+    // Удержание
     canvas.addEventListener('mousedown', startRapidAddition);
     canvas.addEventListener('mouseup', stopRapidAddition);
     canvas.addEventListener('mouseleave', stopRapidAddition);
     
-    // Тач-события для мобилок
+    // Тач
     canvas.addEventListener('touchstart', (e) => {
         e.preventDefault();
-        if (isPaused) return;
-        startRapidAddition();
-        if (e.touches[0]) {
-            addMatrixChar({clientX: e.touches[0].clientX, clientY: e.touches[0].clientY});
+        if (!isPaused) {
+            startRapidAddition();
+            if (e.touches[0]) {
+                addMatrixChar({clientX: e.touches[0].clientX, clientY: e.touches[0].clientY});
+            }
         }
     }, { passive: false });
     
     canvas.addEventListener('touchend', stopRapidAddition);
     canvas.addEventListener('touchcancel', stopRapidAddition);
     
-    // Клавиатура
+    // Клавиши
     document.addEventListener('keydown', (e) => {
         switch(e.code) {
-            case 'Space':
-                e.preventDefault();
-                togglePause();
-                break;
-            case 'KeyR':
-                resetTest();
-                break;
-            case 'KeyA':
-                addMultipleChars(10);
-                break;
-            case 'Escape':
-                stopRapidAddition();
-                break;
+            case 'Space': togglePause(); break;
+            case 'KeyR': resetTest(); break;
+            case 'KeyA': addMultipleChars(5); break;
+            case 'Escape': stopRapidAddition(); break;
         }
     });
 }
@@ -207,7 +190,7 @@ function addMatrixChar(event = null) {
         y = event.clientY || event.pageY;
     } else {
         x = Math.random() * canvas.width;
-        y = -30;
+        y = -20;
     }
     
     matrixChars.push(new MatrixChar(x, y));
@@ -225,7 +208,7 @@ function startRapidAddition() {
     if (holdInterval || isPaused) return;
     holdInterval = setInterval(() => {
         addMultipleChars(currentConfig.spawnRate);
-    }, deviceType === 'mobile' ? 100 : 50); // Медленнее на мобилках
+    }, deviceType === 'mobile' ? 120 : 60);
 }
 
 function stopRapidAddition() {
@@ -240,76 +223,117 @@ function resetTest() {
     matrixChars = [];
     testStartTime = Date.now();
     updateInfoPanel();
-    document.getElementById('statusValue').textContent = 'Reset';
     
-    // Добавляем один символ для демонстрации
-    setTimeout(() => addMatrixChar(), 300);
+    // Добавить пару символов для демо
+    setTimeout(() => {
+        for (let i = 0; i < 2; i++) {
+            setTimeout(() => addMatrixChar(), i * 200);
+        }
+    }, 300);
 }
 
 function togglePause() {
     isPaused = !isPaused;
     const btn = document.querySelectorAll('.control-btn')[1];
     btn.textContent = isPaused ? 'RESUME' : 'PAUSE';
-    document.getElementById('statusValue').textContent = isPaused ? 'Paused' : 'Running';
 }
 
+// ===== СМЕНА ТЕМЫ (ИСПРАВЛЕНО) =====
 function changeTheme() {
-    const themes = [
-        { bg: '#000000', color: '#00FF00', name: 'Matrix' },
-        { bg: '#0a0a2a', color: '#00ffff', name: 'Cyber' },
-        { bg: '#1a001a', color: '#ff00ff', name: 'Neon' },
-        { bg: '#002a00', color: '#00ff00', name: 'Forest' }
-    ];
-    
-    const currentBg = document.body.style.backgroundColor || '#000000';
-    let nextIndex = themes.findIndex(t => t.bg === currentBg);
-    nextIndex = (nextIndex + 1) % themes.length;
-    
-    const theme = themes[nextIndex];
+    currentThemeIndex = (currentThemeIndex + 1) % THEMES.length;
+    applyTheme(THEMES[currentThemeIndex]);
+}
+
+function applyTheme(theme) {
+    // Применяем тему к странице
     document.body.style.backgroundColor = theme.bg;
     document.body.style.color = theme.color;
     
-    document.querySelectorAll('#infoPanel, #controls, #instructions').forEach(el => {
-        el.style.borderColor = theme.color;
+    // Применяем к элементам интерфейса
+    const elements = ['#infoPanel', '#deviceBadge', '#controls', '#instructions'];
+    elements.forEach(selector => {
+        const el = document.querySelector(selector);
+        if (el) {
+            el.style.borderColor = theme.color;
+            if (selector !== '#infoPanel' && selector !== '#deviceBadge') {
+                el.style.background = theme.bg.replace(')', ', 0.9)').replace('rgb', 'rgba');
+            }
+        }
     });
     
+    // Применяем к кнопкам
     document.querySelectorAll('.control-btn').forEach(btn => {
         btn.style.borderColor = theme.color;
         btn.style.color = theme.color;
+        btn.style.background = theme.bg.replace(')', ', 0.8)').replace('rgb', 'rgba');
     });
     
-    CONFIG.colors = [theme.color];
-    document.getElementById('testMode').textContent = theme.name + ' ' + (renderMode === 'gpu' ? 'GPU' : 'CPU');
+    // Обновляем цвета символов
+    const hue = getHueFromColor(theme.color);
+    CONFIG.colors = [
+        theme.color,
+        adjustColor(theme.color, 30),
+        adjustColor(theme.color, 60),
+        adjustColor(theme.color, 90)
+    ];
+    
+    // Обновляем название режима
+    document.getElementById('testMode').textContent = theme.name;
 }
 
-// ===== ОБНОВЛЕНИЕ ИНФОРМАЦИИ =====
+function getHueFromColor(color) {
+    const hex = color.replace('#', '');
+    const r = parseInt(hex.substr(0, 2), 16);
+    const g = parseInt(hex.substr(2, 2), 16);
+    const b = parseInt(hex.substr(4, 2), 16);
+    
+    const max = Math.max(r, g, b);
+    const min = Math.min(r, g, b);
+    
+    let hue = 0;
+    if (max === min) {
+        hue = 0;
+    } else if (max === r) {
+        hue = ((g - b) / (max - min)) % 6;
+    } else if (max === g) {
+        hue = (2 + (b - r) / (max - min)) % 6;
+    } else {
+        hue = (4 + (r - g) / (max - min)) % 6;
+    }
+    
+    hue = Math.round(hue * 60);
+    if (hue < 0) hue += 360;
+    
+    return hue;
+}
+
+function adjustColor(color, amount) {
+    const hex = color.replace('#', '');
+    let r = parseInt(hex.substr(0, 2), 16);
+    let g = parseInt(hex.substr(2, 2), 16);
+    let b = parseInt(hex.substr(4, 2), 16);
+    
+    r = Math.min(255, Math.max(0, r + amount));
+    g = Math.min(255, Math.max(0, g + amount));
+    b = Math.min(255, Math.max(0, b + amount));
+    
+    return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+}
+
+// ===== ОБНОВЛЕНИЕ ИНФО ПАНЕЛИ =====
 function updateInfoPanel() {
     document.getElementById('charsCount').textContent = matrixChars.length;
     document.getElementById('fpsValue').textContent = Math.round(fps);
-    document.getElementById('timeValue').textContent = Math.floor((Date.now() - testStartTime) / 1000);
-    
-    // Статус в зависимости от FPS
-    let status = 'Good';
-    if (matrixChars.length === 0) {
-        status = 'Ready';
-    } else if (fps < 10) {
-        status = 'Heavy Load';
-    } else if (fps < 30) {
-        status = 'Medium Load';
-    } else if (fps < 50) {
-        status = 'Light Load';
-    }
-    document.getElementById('statusValue').textContent = status;
 }
 
-// ===== ОСНОВНОЙ ЦИКЛ (ОПТИМИЗИРОВАННЫЙ) =====
+// ===== ГЛАВНЫЙ ЦИКЛ =====
 function animate(currentTime) {
-    // Считаем FPS
     frameCount++;
-    if (!fpsUpdateTime) fpsUpdateTime = currentTime;
     
+    if (!fpsUpdateTime) fpsUpdateTime = currentTime;
     const deltaTime = currentTime - fpsUpdateTime;
-    if (deltaTime >= 500) { // Обновляем FPS каждые 500мс
+    
+    if (deltaTime >= 500) {
         fps = Math.round((frameCount * 1000) / deltaTime);
         fpsUpdateTime = currentTime;
         frameCount = 0;
@@ -317,11 +341,11 @@ function animate(currentTime) {
     }
     
     if (!isPaused) {
-        // Очищаем canvas (оптимизированно)
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.15)';
+        // Очистка с лёгким затемнением
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         
-        // Обновляем и рисуем символы
+        // Обновление символов
         const newChars = [];
         for (let i = 0; i < matrixChars.length; i++) {
             const char = matrixChars[i];
@@ -331,32 +355,24 @@ function animate(currentTime) {
             }
         }
         matrixChars = newChars;
-        
-        // Автоматически убираем старые символы если их много
-        if (matrixChars.length > currentConfig.maxChars * 0.8) {
-            matrixChars = matrixChars.slice(-currentConfig.maxChars);
-        }
     }
     
     requestAnimationFrame(animate);
 }
 
-// ===== ПУБЛИЧНЫЕ ФУНКЦИИ =====
+// ===== ПУБЛИЧНЫЙ API =====
 window.addMatrixChar = addMatrixChar;
 window.addMultipleChars = addMultipleChars;
 window.resetTest = resetTest;
 window.togglePause = togglePause;
 window.changeTheme = changeTheme;
-window.startRapidAddition = startRapidAddition;
-window.stopRapidAddition = stopRapidAddition;
 window.setDeviceType = setDeviceType;
-window.startBenchmark = function() {
+window.startTest = function() {
     document.getElementById('instructions').style.display = 'none';
     localStorage.setItem('matrixTestVisited', 'true');
     
-    // Добавляем несколько начальных символов
     setTimeout(() => {
-        for (let i = 0; i < 3; i++) {
+        for (let i = 0; i < 2; i++) {
             setTimeout(() => addMatrixChar(), i * 200);
         }
     }, 300);
