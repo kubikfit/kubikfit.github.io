@@ -1,4 +1,4 @@
-// MATRIX FPS TEST - Clean Version
+// MATRIX FPS TEST - Ultra Clean Version
 // Save as: js/matrix-fps.js
 
 // ===== CONFIGURATION =====
@@ -7,22 +7,18 @@ const CONFIG = {
     chars: "ﾊﾐﾋｰｳｼﾅﾓﾆｻﾜﾂｵﾘｱﾎﾃﾏｹﾒｴｶｷﾑﾕﾗｾﾈｽﾀﾇﾍ012345789Z:.\"=*+-<>¦｜╌ç",
     
     desktop: {
-        fontSize: 16,
-        spawnRate: 25,
-        speedMultiplier: 1.2,
-        autoCleanup: true
+        fontSize: 18,
+        spawnRate: 30, // Ещё быстрее
+        speedMultiplier: 1.5
     },
     
     mobile: {
-        fontSize: 14,
-        spawnRate: 15,
-        speedMultiplier: 0.9,
-        autoCleanup: true
+        fontSize: 16,
+        spawnRate: 20,
+        speedMultiplier: 1.2
     },
     
-    colors: ['#0F0', '#0F6', '#0C0', '#3F3'],
-    gravity: 0.03,
-    performanceMode: true
+    colors: ['#0F0', '#0F6', '#0C0', '#3F3']
 };
 
 // ===== GLOBAL VARIABLES =====
@@ -57,47 +53,50 @@ function setDeviceType(type) {
         deviceType === 'mobile' ? 'CPU' : 'GPU';
 }
 
-// ===== КЛАСС СИМВОЛА (БЕЗ ШЛЕЙФА, ПРЯМОЕ ПАДЕНИЕ) =====
+// ===== КЛАСС СИМВОЛА (АБСОЛЮТНО БЕЗ ШЛЕЙФА) =====
 class MatrixChar {
     constructor(x, y) {
         this.x = x || Math.random() * canvas.width;
         this.y = y || -20;
         this.char = CONFIG.chars[Math.floor(Math.random() * CONFIG.chars.length)];
-        this.speed = (0.8 + Math.random() * 0.4) * currentConfig.speedMultiplier;
+        this.speed = (1.0 + Math.random() * 0.5) * currentConfig.speedMultiplier;
         this.color = CONFIG.colors[Math.floor(Math.random() * CONFIG.colors.length)];
         this.size = currentConfig.fontSize;
-        this.lifetime = 8000 + Math.random() * 7000;
         this.createdTime = Date.now();
-        this.brightness = 0.8 + Math.random() * 0.2;
-        
-        // БЕЗ ШЛЕЙФА ВООБЩЕ
-        this.tail = null;
-        this.tailMax = 0;
+        this.brightness = 0.9 + Math.random() * 0.1; // Всегда яркие
     }
     
     update() {
-        // Автоочистка
-        if (currentConfig.autoCleanup && Date.now() - this.createdTime > this.lifetime) {
-            return false;
-        }
-        
-        // ПРЯМОЕ ПАДЕНИЕ ВНИЗ - никаких волн
+        // НИКАКОЙ АВТООЧИСТКИ - символы остаются навсегда
+        // ПРЯМОЕ ПАДЕНИЕ ВНИЗ
         this.y += this.speed;
         
-        // Выход за границы
-        if (this.y > canvas.height + 100) {
-            return false;
+        // Если ушёл за нижнюю границу - возвращаем наверх
+        if (this.y > canvas.height + 50) {
+            this.y = -20;
+            this.x = Math.random() * canvas.width;
+            this.char = CONFIG.chars[Math.floor(Math.random() * CONFIG.chars.length)];
+            this.speed = (1.0 + Math.random() * 0.5) * currentConfig.speedMultiplier;
         }
         
-        return true;
+        return true; // ВСЕГДА true - никогда не удаляем
     }
     
     draw() {
-        // ТОЛЬКО ОДИН СИМВОЛ - без шлейфа
+        // АБСОЛЮТНО ЧЁТКИЙ СИМВОЛ - никакого размытия, никакого шлейфа
         ctx.save();
-        ctx.globalAlpha = this.brightness;
+        ctx.globalAlpha = 1.0; // Полная непрозрачность
         ctx.fillStyle = this.color;
-        ctx.font = `bold ${this.size}px 'Courier New'`;
+        ctx.font = `bold ${this.size}px 'Courier New', monospace`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        
+        // ЧЁТКИЙ контур для видимости
+        ctx.strokeStyle = '#000';
+        ctx.lineWidth = 2;
+        ctx.strokeText(this.char, this.x, this.y);
+        
+        // Основной символ
         ctx.fillText(this.char, this.x, this.y);
         ctx.restore();
     }
@@ -106,7 +105,7 @@ class MatrixChar {
 // ===== ИНИЦИАЛИЗАЦИЯ =====
 function initMatrix() {
     canvas = document.getElementById('matrixCanvas');
-    ctx = canvas.getContext('2d', { alpha: false });
+    ctx = canvas.getContext('2d', { alpha: true }); // Включаем альфа для чёткости
     
     resizeCanvas();
     window.addEventListener('resize', resizeCanvas);
@@ -115,12 +114,16 @@ function initMatrix() {
     applyTheme(THEMES[currentThemeIndex]);
     requestAnimationFrame(animate);
     
-    console.log('Matrix Test - CLEAN MODE (no trails)');
+    console.log('Matrix Test - ULTRA CLEAN (no trails, no limits)');
 }
 
 function resizeCanvas() {
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = window.innerWidth * dpr;
+    canvas.height = window.innerHeight * dpr;
+    canvas.style.width = window.innerWidth + 'px';
+    canvas.style.height = window.innerHeight + 'px';
+    ctx.scale(dpr, dpr);
 }
 
 function setupEventListeners() {
@@ -129,7 +132,7 @@ function setupEventListeners() {
         if (!isPaused) addMatrixChar(e);
     });
     
-    // Удержание
+    // Удержание - СУПЕР АГРЕССИВНО
     canvas.addEventListener('mousedown', () => {
         if (!isPaused) startRapidAddition();
     });
@@ -156,14 +159,15 @@ function setupEventListeners() {
         switch(e.code) {
             case 'Space': togglePause(); break;
             case 'KeyR': resetTest(); break;
-            case 'KeyA': addMultipleChars(50); break;
-            case 'KeyQ': addMultipleChars(200); break;
+            case 'KeyA': addMultipleChars(100); break;
+            case 'KeyQ': addMultipleChars(500); break;
+            case 'KeyW': addMultipleChars(1000); break;
             case 'Escape': stopRapidAddition(); break;
         }
     });
 }
 
-// ===== УПРАВЛЕНИЕ СИМВОЛАМИ =====
+// ===== УПРАВЛЕНИЕ СИМВОЛАМИ (БЕЗ ВСЯКИХ ОГРАНИЧЕНИЙ) =====
 function addMatrixChar(event = null) {
     if (isPaused) return;
     
@@ -176,33 +180,29 @@ function addMatrixChar(event = null) {
         y = -20;
     }
     
+    // НИКАКИХ ПРОВЕРОК НА ЛИМИТ - добавляем всегда
     matrixChars.push(new MatrixChar(x, y));
+    
     updateInfoPanel();
 }
 
 function addMultipleChars(count) {
     if (isPaused) return;
     
-    const batchSize = 100;
-    const batches = Math.ceil(count / batchSize);
-    
-    for (let b = 0; b < batches; b++) {
-        setTimeout(() => {
-            const charsToAdd = Math.min(batchSize, count - (b * batchSize));
-            for (let i = 0; i < charsToAdd; i++) {
-                addMatrixChar();
-            }
-        }, b * 10);
+    // Добавляем ВСЕ СРАЗУ без задержек
+    for (let i = 0; i < count; i++) {
+        addMatrixChar();
     }
 }
 
 function startRapidAddition() {
     if (holdInterval || isPaused) return;
     
-    const addSpeed = deviceType === 'mobile' ? 80 : 150;
+    // МАКСИМАЛЬНО АГРЕССИВНО
+    const addSpeed = deviceType === 'mobile' ? 120 : 200; // символов в секунду
     
     holdInterval = setInterval(() => {
-        const batch = deviceType === 'mobile' ? 8 : 15;
+        const batch = deviceType === 'mobile' ? 12 : 20;
         addMultipleChars(batch);
     }, 1000 / addSpeed);
 }
@@ -214,21 +214,13 @@ function stopRapidAddition() {
     }
 }
 
-// ===== ОПТИМИЗАЦИЯ ПАМЯТИ =====
-function optimizeMemory() {
-    if (matrixChars.length > 10000) {
-        const removeCount = Math.floor(matrixChars.length * 0.1);
-        matrixChars = matrixChars.slice(removeCount);
-        console.log(`Memory optimized: removed ${removeCount} old symbols`);
-    }
-}
-
 // ===== УПРАВЛЕНИЕ ТЕСТОМ =====
 function resetTest() {
     matrixChars = [];
     testStartTime = Date.now();
     updateInfoPanel();
     
+    // Добавить для демо
     setTimeout(() => {
         addMultipleChars(5);
     }, 300);
@@ -267,54 +259,21 @@ function applyTheme(theme) {
         btn.style.background = theme.bg.replace(')', ', 0.8)').replace('rgb', 'rgba');
     });
     
-    const hue = getHueFromColor(theme.color);
-    CONFIG.colors = [
-        theme.color,
-        adjustColor(theme.color, 30),
-        adjustColor(theme.color, 60),
-        adjustColor(theme.color, 90)
-    ];
-    
-    document.getElementById('testMode').textContent = theme.name;
-}
-
-function getHueFromColor(color) {
-    const hex = color.replace('#', '');
+    // Обновляем цвета символов
+    const hex = theme.color.replace('#', '');
     const r = parseInt(hex.substr(0, 2), 16);
     const g = parseInt(hex.substr(2, 2), 16);
     const b = parseInt(hex.substr(4, 2), 16);
     
-    const max = Math.max(r, g, b);
-    const min = Math.min(r, g, b);
+    // Создаём 4 оттенка основного цвета
+    CONFIG.colors = [
+        theme.color,
+        `rgb(${Math.min(255, r + 30)}, ${Math.min(255, g + 30)}, ${Math.min(255, b + 30)})`,
+        `rgb(${Math.min(255, r + 60)}, ${Math.min(255, g + 60)}, ${Math.min(255, b + 60)})`,
+        `rgb(${Math.min(255, r + 90)}, ${Math.min(255, g + 90)}, ${Math.min(255, b + 90)})`
+    ];
     
-    let hue = 0;
-    if (max === min) {
-        hue = 0;
-    } else if (max === r) {
-        hue = ((g - b) / (max - min)) % 6;
-    } else if (max === g) {
-        hue = (2 + (b - r) / (max - min)) % 6;
-    } else {
-        hue = (4 + (r - g) / (max - min)) % 6;
-    }
-    
-    hue = Math.round(hue * 60);
-    if (hue < 0) hue += 360;
-    
-    return hue;
-}
-
-function adjustColor(color, amount) {
-    const hex = color.replace('#', '');
-    let r = parseInt(hex.substr(0, 2), 16);
-    let g = parseInt(hex.substr(2, 2), 16);
-    let b = parseInt(hex.substr(4, 2), 16);
-    
-    r = Math.min(255, Math.max(0, r + amount));
-    g = Math.min(255, Math.max(0, g + amount));
-    b = Math.min(255, Math.max(0, b + amount));
-    
-    return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+    document.getElementById('testMode').textContent = theme.name;
 }
 
 // ===== ОБНОВЛЕНИЕ ИНФО ПАНЕЛИ =====
@@ -322,47 +281,42 @@ function updateInfoPanel() {
     document.getElementById('charsCount').textContent = matrixChars.length.toLocaleString();
     document.getElementById('fpsValue').textContent = Math.round(fps);
     
-    if (matrixChars.length > 5000) {
+    // Статус нагрузки
+    if (matrixChars.length > 10000) {
+        document.getElementById('testMode').textContent = 'EXTREME';
+    } else if (matrixChars.length > 5000) {
         document.getElementById('testMode').textContent = 'HEAVY';
+    } else if (matrixChars.length > 1000) {
+        document.getElementById('testMode').textContent = 'MEDIUM';
     }
 }
 
-// ===== ГЛАВНЫЙ ЦИКЛ =====
+// ===== ГЛАВНЫЙ ЦИКЛ (МАКСИМАЛЬНО ПРОИЗВОДИТЕЛЬНЫЙ) =====
 function animate(currentTime) {
     frameCount++;
     
     if (!fpsUpdateTime) fpsUpdateTime = currentTime;
     const deltaTime = currentTime - fpsUpdateTime;
     
-    if (deltaTime >= 500) {
+    if (deltaTime >= 1000) { // Раз в секунду для точности
         fps = Math.round((frameCount * 1000) / deltaTime);
         fpsUpdateTime = currentTime;
         frameCount = 0;
         updateInfoPanel();
-        
-        if (matrixChars.length > 8000) {
-            optimizeMemory();
-        }
     }
     
     if (!isPaused) {
-        // Очистка
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.08)';
+        // ПОЛНАЯ ОЧИСТКА КАЖДЫЙ КАДР - никакого размытия
+        ctx.fillStyle = '#000000';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         
-        // Обновление символов
-        const newChars = [];
+        // Рисуем ВСЕ символы
         const length = matrixChars.length;
-        
         for (let i = 0; i < length; i++) {
             const char = matrixChars[i];
-            if (char.update()) {
-                char.draw();
-                newChars.push(char);
-            }
+            char.update();
+            char.draw();
         }
-        
-        matrixChars = newChars;
     }
     
     requestAnimationFrame(animate);
