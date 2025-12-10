@@ -219,8 +219,8 @@
             }, 300);
         }
         
-        // Показать/скрыть помощь
-        function toggleHelp() {
+        // Показать/скрыть помощь - ИСПРАВЛЕНО
+        window.toggleHelp = function() {
             const inst = document.getElementById('instructions');
             inst.style.display = inst.style.display === 'none' ? 'block' : 'none';
         }
