@@ -2,33 +2,117 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Movie Player</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
+    <title>Matrix FPS Test</title>
     <style>
-        body {
-            margin: 0;
-            background: #000;
-            display: flex;
-            justify-content: center;
-            align-items: center;
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            background: #000; 
+            color: #00FF00; 
+            font-family: 'Courier New', monospace;
+            overflow: hidden;
+            cursor: pointer;
             height: 100vh;
         }
-        video {
+        
+        #matrixCanvas {
+            display: block;
+            position: absolute;
+            top: 0;
+            left: 0;
             width: 100%;
             height: 100%;
-            max-width: 100%;
-            max-height: 100%;
+        }
+        
+        #infoPanel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 100;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border: 1px solid #00FF00;
+            border-radius: 5px;
+            box-shadow: 0 0 15px rgba(0, 255, 0, 0.3);
+            min-width: 250px;
+        }
+        
+        .info-row {
+            margin: 8px 0;
+            font-size: 18px;
+            text-shadow: 0 0 5px #00FF00;
+        }
+        
+        .info-value {
+            float: right;
+            color: #FFFFFF;
+            font-weight: bold;
+        }
+        
+        #controls {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            z-index: 100;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px;
+            border: 1px solid #00FF00;
+            border-radius: 5px;
+        }
+        
+        button {
             background: #000;
+            color: #00FF00;
+            border: 1px solid #00FF00;
+            padding: 8px 15px;
+            margin: 5px;
+            cursor: pointer;
+            font-family: 'Courier New';
+            transition: all 0.3s;
+        }
+        
+        button:hover {
+            background: #00FF00;
+            color: #000;
+            box-shadow: 0 0 10px #00FF00;
+        }
+        
+        #touchHint {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 24px;
+            opacity: 0.7;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 0.3; }
+            50% { opacity: 0.8; }
         }
     </style>
 </head>
 <body>
-
-<video controls autoplay playsinline>
-    <source src="movie.mp4" type="video/mp4">
-    Ваш браузер не поддерживает HTML5 видео.
-</video>
-
+    <canvas id="matrixCanvas"></canvas>
+    
+    <div id="infoPanel">
+        <div class="info-row">MATRIX: <span id="charsCount" class="info-value">0</span></div>
+        <div class="info-row">FPS: <span id="fpsValue" class="info-value">60</span></div>
+        <div class="info-row">SPEED: <span id="speedValue" class="info-value">1.0</span></div>
+        <div class="info-row">MEMORY: <span id="memoryValue" class="info-value">0</span> MB</div>
+        <div class="info-row">TIME: <span id="timeValue" class="info-value">0</span>s</div>
+    </div>
+    
+    <div id="controls">
+        <button onclick="resetTest()">СБРОС</button>
+        <button onclick="togglePause()">ПАУЗА</button>
+        <button onclick="changeTheme()">ТЕМА</button>
+    </div>
+    
+    <div id="touchHint">TAP to add symbols • HOLD for rapid increase</div>
+    
+    <script>
+        // Код JavaScript здесь
+    </script>
 </body>
 </html>
